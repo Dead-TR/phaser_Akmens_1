@@ -275,7 +275,6 @@ function create (){
 
 function update() {
   playerTile = mooveLayer.getTileAtWorldXY(player.x, player.y, false);
-  // cam.setFollowOffset(player.x, 0);
 
   //рух по вертикалі----------------------------
   if (activeCell.cursorY >= 0) {
