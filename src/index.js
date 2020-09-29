@@ -82,16 +82,18 @@ function preload (){
   );
 }
 
-let player, activeCell, playerTile, mooveLayer, mooveOrder;
+let player, activeCell, playerTile, cam, mooveLayer, mooveOrder;
 
 function create (){
-  const grassMap = this.make.tilemap({
+  cam = this.cameras.main;
+
+  const grassMap = this.make.tilemap({ //Таблиця зображень
     key: 'grassGrid',
     tileWidth: 32,
     tileHeight: 32,
   });
 
-  const mooveMap = this.make.tilemap({
+  const mooveMap = this.make.tilemap({ //Таблиця колізії
     key: 'moovement',
     tileWidth: 32,
     tileHeight: 32,
@@ -130,8 +132,10 @@ function create (){
       1,
     ).setOrigin(0.5, 0.5)
 
-  // блок переміщення курсору
+  cam.setBounds(0, 0, mooveLayer.width + 100, mooveLayer.height + 100);
+  cam.startFollow(player, true, 1, 1, 0, 0);
 
+  // блок переміщення курсору
   activeCell = {};
   mooveOrder = true;
 
@@ -154,7 +158,7 @@ function create (){
     if(event.leftButtonReleased()) {
       const stopIndex = 1;
 
-      const tile = mooveLayer.getTileAtWorldXY(event.downX, event.downY, true);
+      const tile = mooveLayer.getTileAtWorldXY(event.downX+cam.scrollX, event.downY+cam.scrollY, true);
 
       if (tile !== null && tile.index !== stopIndex) {
         cursor.x = tile.pixelX + 16 + ((config.width - 480) / 2);
@@ -171,13 +175,8 @@ function create (){
     const stopIndex = 1;
 
     if(event.code === "Space") {
-      // console.log('X = ', activeCell.userX - (activeCell.cursorX))
-      console.log('activeCell', activeCell)
-      console.log('activeCell.cursorY', activeCell.cursorY)
-      console.log('activeCell.userY ', activeCell.userY )
-
-      console.log('Y = ', activeCell.userY - (activeCell.cursorY))
-      console.log('---------------------------')
+      console.log("scrollX", cam.scrollX)
+      console.log("scrollY", cam.scrollY)
     }
 
     if (event.key === 'ArrowLeft') {
@@ -276,6 +275,7 @@ function create (){
 
 function update() {
   playerTile = mooveLayer.getTileAtWorldXY(player.x, player.y, false);
+  // cam.setFollowOffset(player.x, 0);
 
   //рух по вертикалі----------------------------
   if (activeCell.cursorY >= 0) {
