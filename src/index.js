@@ -97,6 +97,7 @@ function create (){
     tileHeight: 32,
   });
 
+  //тайлсет графіки
   const grassTileset = grassMap.addTilesetImage('grass', null, 32, 32);
   const grassLayer = grassMap.createStaticLayer(
     0,
@@ -104,6 +105,17 @@ function create (){
     ((config.width - 480) / 2),
     ((config.height - 480) / 2)
   );
+
+  // тайлсет колізії:
+  const mooveTileset = grassMap.addTilesetImage('empty', null, 32, 32); // зелений -- обмеження
+  mooveLayer = mooveMap.createStaticLayer(
+    0,
+    null, //слот, під зображення
+    ((config.width - 480) / 2),
+    ((config.height - 480) / 2)
+  );
+
+  //курсор і персонаж
   const cursor = this.add.image(
     ((config.width - 480) / 2) + 224 + 16,
     ((config.height - 480) / 2) + 416 + 16,
@@ -118,27 +130,21 @@ function create (){
       1,
     ).setOrigin(0.5, 0.5)
 
-  const mooveTileset = grassMap.addTilesetImage('empty', null, 32, 32); // зелений -- обмеження
-  mooveLayer = mooveMap.createStaticLayer(
-    0,
-    null, //слот, під зображення
-    ((config.width - 480) / 2),
-    ((config.height - 480) / 2)
-  )
+  // блок переміщення курсору
 
   activeCell = {};
   mooveOrder = true;
 
   const playerGoAction = () => {
     if (mooveOrder) {
-      mooveOrder = false;
-      const tile = mooveLayer.getTileAtWorldXY(cursor.x, cursor.y + 32, false);
-      playerTile = mooveLayer.getTileAtWorldXY(player.x, player.y, false);
+      // mooveOrder = false; // -- заборона на зміну напрямку руху персонажа
+      const tile = mooveLayer.getTileAtWorldXY(cursor.x, cursor.y + 32, false); //т-мап курсору
+      playerTile = mooveLayer.getTileAtWorldXY(player.x, player.y, false); //т-мап персонажа
 
-      activeCell.cursorX = tile.x;
-      activeCell.cursorY = tile.y;
-      activeCell.userX = playerTile.x;
-      activeCell.userY = playerTile.y;
+      activeCell.cursorX = cursor.x;
+      activeCell.cursorY = cursor.y;
+      activeCell.userX = player.x;
+      activeCell.userY = player.y;
       activeCell.pixelY = tile.pixelY;
       activeCell.pixelX = tile.pixelX;
     }
@@ -163,6 +169,16 @@ function create (){
 
   this.input.keyboard.on('keydown', function (event) {
     const stopIndex = 1;
+
+    if(event.code === "Space") {
+      // console.log('X = ', activeCell.userX - (activeCell.cursorX))
+      console.log('activeCell', activeCell)
+      console.log('activeCell.cursorY', activeCell.cursorY)
+      console.log('activeCell.userY ', activeCell.userY )
+
+      console.log('Y = ', activeCell.userY - (activeCell.cursorY))
+      console.log('---------------------------')
+    }
 
     if (event.key === 'ArrowLeft') {
       const tile = mooveLayer.getTileAtWorldXY(cursor.x - 32, cursor.y, false);
@@ -200,7 +216,9 @@ function create (){
       playerGoAction();
     }
   });
+  // кінець блоку переміщення курсору
 
+  // блок створення анімацій
   this.anims.create({
     key: 'playerGoUp',
     frames: this.anims.generateFrameNumbers(
@@ -252,50 +270,89 @@ function create (){
     frameRate: 6,
     repeat: -1,
   });
+  // кінець блоку створення анімацій
+
 }
 
 function update() {
   playerTile = mooveLayer.getTileAtWorldXY(player.x, player.y, false);
 
+  //рух по вертикалі----------------------------
   if (activeCell.cursorY >= 0) {
-    if ((activeCell.userY - (activeCell.cursorY)) < 0) {
+
+    if ((activeCell.userY - (activeCell.cursorY)) < 0) { //рух вниз
       !player.anims.isPlaying && player.anims.play('playerGoDown', true);
       player.setVelocityY(100);
-    } else if ((activeCell.userY - (activeCell.cursorY)) >= 0) {
+
+      characterCollision(0, 32);//зупиняємо персонажа, перед перешкодою
+    } else if ((activeCell.userY - (activeCell.cursorY)) >= 0) { //вгору
       !player.anims.isPlaying && player.anims.play('playerGoUp', true);
       player.setVelocityY(-100);
+
+      characterCollision(0, -5)
     }
 
+    //зупинення гравця
     if (
       activeCell.pixelY + 36 >= Math.floor(player.y)-1
         && activeCell.pixelY + 35 <= Math.floor(player.y)+1
     ) {
-      player.anims.pause(player.anims.currentAnim.frames[1]);
-      player.setVelocityY(0);
-      delete activeCell.cursorY;
+      playerStop('y');
     };
   };
 
+  //рух по горизонталі--------------------------
   if (activeCell.cursorX >= 0) {
     if ((activeCell.userX - (activeCell.cursorX)) < 0) {
       player.anims.play('playerGoRight', true);
-      player.setVelocityX(100);
+      player.setVelocityX(100); //праворуч
+
+      characterCollision(15, 0);
     } else if ((activeCell.userX - (activeCell.cursorX)) > 0) {
       player.anims.play('playerGoLeft', true);
-      player.setVelocityX(-100);
+      player.setVelocityX(-100);  //ліворуч
+
+      characterCollision(-15, 0);
     }
 
+    //зупинення гравця
     if (
       activeCell.pixelX + 76 >= Math.floor(player.x)-1
         && activeCell.pixelX + 75 <= Math.floor(player.x)+1
     ) {
-      player.anims.pause(player.anims.currentAnim.frames[1]);
-      player.setVelocityX(0);
-      delete activeCell.cursorX
+      playerStop('x');
     };
-  }
+  }//------------------------------------------
 
   if (!activeCell.cursorX && !activeCell.cursorY) {
     mooveOrder = true;
+  }
+}
+
+
+//функція зупинення гравця
+function playerStop(coordinate) {
+  player.anims.pause(player.anims.currentAnim.frames[1]);
+
+  if (coordinate === 'y') {
+    player.setVelocityY(0);
+    delete activeCell.cursorY;
+  } else if (coordinate === 'x') {
+    player.setVelocityX(0);
+    delete activeCell.cursorX;
+  }
+}
+
+//ф-я, що зупиняє персонажа, перед перешкодою:
+function characterCollision(cooX, cooY) {
+  const aheadTile = mooveLayer.getTileAtWorldXY(player.x + cooX, player.y + cooY);
+  if (aheadTile.index === 1) {
+    if (cooY === 0) {
+      playerStop('x');
+      delete activeCell.cursorX;
+    } else {
+      playerStop('y');
+      delete activeCell.cursorY;
+    }
   }
 }
